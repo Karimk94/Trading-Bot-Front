@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAPI } from "@/hooks/useAPI";
-import type { DashboardStats, TradeRecord } from "@/hooks/useAPI";
+import type { DashboardStats, ForexScan, TradeRecord } from "@/hooks/useAPI";
 import Header from "@/components/Header";
 import StatsBar from "@/components/StatsBar";
 import IndicatorsPanel from "@/components/IndicatorsPanel";
@@ -11,43 +11,102 @@ import AIDecisionPanel from "@/components/AIDecisionPanel";
 import TradeHistory from "@/components/TradeHistory";
 import ActivityFeed from "@/components/ActivityFeed";
 import ApprovalModal from "@/components/ApprovalModal";
+import ForexTrendsPanel from "@/components/ForexTrendsPanel";
 
 export default function Dashboard() {
   const ws = useWebSocket();
   const api = useAPI();
+  const {
+    getStats,
+    getTrades,
+    getLoopStatus,
+    startLoop,
+    stopLoop,
+    analyzeNow,
+    generateWeeklyReport,
+    getForexTrends,
+    loading,
+  } = api;
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [loopRunning, setLoopRunning] = useState(false);
+  const [autoApprove, setAutoApprove] = useState(false);
+  const [autoApproveUpdating, setAutoApproveUpdating] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [forexScan, setForexScan] = useState<ForexScan | null>(null);
+  const [forexLoading, setForexLoading] = useState(true);
+  const [forexError, setForexError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedPreference = window.localStorage.getItem("autoApproveTrades") === "true";
+    if (!savedPreference) return;
+
+    fetch("http://127.0.0.1:8000/api/loop/auto-approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: true }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`API ${response.status}`);
+        setAutoApprove(true);
+      })
+      .catch((error) => console.error("Failed to restore auto-approve preference:", error));
+  }, []);
+
+  const refreshForex = useCallback(async () => {
+    setForexLoading(true);
+    try {
+      setForexScan(await getForexTrends());
+      setForexError(null);
+    } catch (e: unknown) {
+      setForexError(e instanceof Error ? e.message : "Forex scan is unavailable.");
+    } finally {
+      setForexLoading(false);
+    }
+  }, [getForexTrends]);
 
   const refreshData = useCallback(async () => {
     try {
       const [newStats, newTrades, status] = await Promise.all([
-        api.getStats(),
-        api.getTrades(50),
-        api.getLoopStatus(),
+        getStats(),
+        getTrades(50),
+        getLoopStatus(),
       ]);
       setStats(newStats);
       setTrades(newTrades);
       setLoopRunning(status.running);
     } catch {}
-  }, [api]);
+  }, [getStats, getTrades, getLoopStatus]);
 
   useEffect(() => {
-    refreshData();
+    const initialFetch = window.setTimeout(refreshData, 0);
     const interval = setInterval(refreshData, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
   }, [refreshData]);
 
   useEffect(() => {
+    const initialFetch = window.setTimeout(refreshForex, 0);
+    const interval = setInterval(refreshForex, 5 * 60 * 1000);
+    return () => {
+      window.clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
+  }, [refreshForex]);
+
+  useEffect(() => {
     if (ws.lastEvent?.event === "trade_executed" || ws.lastEvent?.event === "loop_stopped") {
-      refreshData();
+      const refreshTimeout = window.setTimeout(refreshData, 0);
+      return () => window.clearTimeout(refreshTimeout);
     }
   }, [ws.lastEvent, refreshData]);
 
   const handleStart = async () => {
     try {
-      await api.startLoop();
+      await startLoop();
       setLoopRunning(true);
     } catch (e: unknown) {
       console.error("Failed to start loop:", e);
@@ -58,7 +117,7 @@ export default function Dashboard() {
 
   const handleStop = async () => {
     try {
-      await api.stopLoop();
+      await stopLoop();
       setLoopRunning(false);
       refreshData();
     } catch (e) {
@@ -83,10 +142,28 @@ export default function Dashboard() {
     }
   };
 
+  const handleAutoApproveChange = async (enabled: boolean) => {
+    setAutoApproveUpdating(true);
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/loop/auto-approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      window.localStorage.setItem("autoApproveTrades", String(enabled));
+      setAutoApprove(enabled);
+    } catch (e) {
+      console.error("Failed to update auto-approve preference:", e);
+    } finally {
+      setAutoApproveUpdating(false);
+    }
+  };
+
   const handleGenerateReport = async () => {
     setReportLoading(true);
     try {
-      const result = await api.generateWeeklyReport();
+      const result = await generateWeeklyReport();
       if (result.success) {
         alert(`Weekly BUY report generated for ${result.period_label}.`);
       } else {
@@ -98,6 +175,19 @@ export default function Dashboard() {
       alert(`Failed to generate the weekly report: ${message}`);
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  const handleAnalyzeNow = async () => {
+    setAnalysisLoading(true);
+    try {
+      const result = await analyzeNow();
+      alert(`${result.decision} · ${(result.confidence * 100).toFixed(0)}% confidence\n${result.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      alert(`Manual analysis failed: ${message}`);
+    } finally {
+      setAnalysisLoading(false);
     }
   };
 
@@ -117,6 +207,9 @@ export default function Dashboard() {
           sessionName={ws.session?.session_name ?? null}
           currentTimeGST={ws.session?.current_time_gst ?? null}
           iteration={ws.session?.iteration ?? 0}
+          autoApprove={autoApprove}
+          autoApproveUpdating={autoApproveUpdating}
+          onAutoApproveChange={handleAutoApproveChange}
         />
 
         <main className="flex-1 overflow-auto p-6 flex flex-col gap-5">
@@ -126,11 +219,13 @@ export default function Dashboard() {
             onStart={handleStart}
             onStop={handleStop}
             onGenerateReport={handleGenerateReport}
-            loading={api.loading}
+            onAnalyzeNow={handleAnalyzeNow}
+            loading={loading}
             reportLoading={reportLoading}
+            analysisLoading={analysisLoading}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="flex flex-col gap-5">
               <IndicatorsPanel
                 indicators={ws.indicators}
@@ -140,7 +235,7 @@ export default function Dashboard() {
               <ActivityFeed lastTrade={ws.lastTrade} errors={ws.errors} />
             </div>
 
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5 order-first lg:order-none h-full">
               <AIDecisionPanel
                 decision={ws.decision}
                 sessionActive={ws.sessionActive}
@@ -148,10 +243,17 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="flex flex-col gap-5 min-h-0">
+            <div className="flex flex-col gap-5 h-full">
               <TradeHistory trades={trades} />
             </div>
           </div>
+
+          <ForexTrendsPanel
+            scan={forexScan}
+            loading={forexLoading}
+            error={forexError}
+            onRefresh={refreshForex}
+          />
         </main>
       </div>
     </>

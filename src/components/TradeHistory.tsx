@@ -8,7 +8,7 @@ interface Props {
 
 export default function TradeHistory({ trades }: Props) {
   return (
-    <div className="glass-card p-5 flex flex-col gap-3 min-h-0">
+    <div className="glass-card p-5 flex flex-col gap-3 min-h-0 h-full">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-wide uppercase text-muted">
           Trade History
@@ -16,9 +16,9 @@ export default function TradeHistory({ trades }: Props) {
         <span className="text-xs text-muted">{trades.length} trades</span>
       </div>
 
-      <div className="flex-1 overflow-auto scrollbar-thin">
+      <div className="flex-1 flex flex-col overflow-auto scrollbar-thin">
         {trades.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-muted text-sm">
+          <div className="flex-1 flex items-center justify-center py-8 text-muted text-sm">
             No trades yet
           </div>
         ) : (

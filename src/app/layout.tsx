@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trading Bot",
-  description: "AI-powered XAU/USD trading dashboard",
+  title: "Forex & Gold Trading Dashboard",
+  description: "Forex trend screening and XAU/USD trading dashboard",
 };
 
 export default function RootLayout({

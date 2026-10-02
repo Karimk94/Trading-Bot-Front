@@ -63,7 +63,7 @@ function IdleState({ loopRunning, sessionActive }: { loopRunning: boolean; sessi
         </svg>
         <div className="flex flex-col gap-1">
           <span className="text-sm text-muted">Bot is stopped</span>
-          <span className="text-xs text-muted/50">Click "Start Bot" to begin AI analysis</span>
+          <span className="text-xs text-muted/50">Click &quot;Start Bot&quot; to begin AI analysis</span>
         </div>
       </div>
     );
@@ -86,7 +86,7 @@ function IdleState({ loopRunning, sessionActive }: { loopRunning: boolean; sessi
 
 export default function AIDecisionPanel({ decision, sessionActive, loopRunning }: Props) {
   return (
-    <div className="glass-card p-5 flex flex-col gap-4">
+    <div className="glass-card p-5 flex flex-col gap-4 h-full">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-wide uppercase text-muted">
           AI Decision
@@ -95,7 +95,9 @@ export default function AIDecisionPanel({ decision, sessionActive, loopRunning }
       </div>
 
       {!decision ? (
-        <IdleState loopRunning={loopRunning} sessionActive={sessionActive} />
+        <div className="flex-1 flex items-center justify-center">
+          <IdleState loopRunning={loopRunning} sessionActive={sessionActive} />
+        </div>
       ) : (
         <>
           <div className="flex items-center gap-5 animate-fade-in-up">

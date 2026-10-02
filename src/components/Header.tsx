@@ -7,6 +7,9 @@ interface Props {
   sessionName: string | null;
   currentTimeGST: string | null;
   iteration: number;
+  autoApprove: boolean;
+  autoApproveUpdating: boolean;
+  onAutoApproveChange: (enabled: boolean) => void;
 }
 
 const SESSIONS_GST = [
@@ -44,6 +47,9 @@ export default function Header({
   sessionName,
   currentTimeGST,
   iteration,
+  autoApprove,
+  autoApproveUpdating,
+  onAutoApproveChange,
 }: Props) {
   const now = currentTimeGST ? new Date(currentTimeGST) : null;
 
@@ -59,7 +65,7 @@ export default function Header({
   const nextSession = loopRunning && !sessionActive && now ? getNextSessionInfo(now) : null;
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-4 border-b border-border">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
@@ -76,7 +82,7 @@ export default function Header({
         </div>
       </div>
 
-      <div className="flex items-center gap-5">
+      <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3">
         {/* Active session badge */}
         {sessionActive && sessionName && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20">
@@ -111,6 +117,17 @@ export default function Header({
             #{iteration}
           </div>
         )}
+
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoApprove}
+            disabled={autoApproveUpdating}
+            onChange={(event) => onAutoApproveChange(event.target.checked)}
+            className="h-4 w-4 accent-profit disabled:cursor-wait"
+          />
+          <span>Auto-approve trades</span>
+        </label>
 
         <div className="flex items-center gap-1.5">
           <div

@@ -8,8 +8,10 @@ interface Props {
   onStart: () => void;
   onStop: () => void;
   onGenerateReport: () => void;
+  onAnalyzeNow: () => void;
   loading: boolean;
   reportLoading: boolean;
+  analysisLoading: boolean;
 }
 
 function StatCard({
@@ -40,8 +42,10 @@ export default function StatsBar({
   onStart,
   onStop,
   onGenerateReport,
+  onAnalyzeNow,
   loading,
   reportLoading,
+  analysisLoading,
 }: Props) {
   const s = stats || {
     total_trades: 0,
@@ -81,6 +85,24 @@ export default function StatsBar({
       />
 
       <div className="ml-auto flex items-center gap-3">
+        <button
+          onClick={onAnalyzeNow}
+          disabled={!loopRunning || analysisLoading}
+          className={`
+            px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300
+            flex items-center gap-2.5 border
+            ${!loopRunning || analysisLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            bg-hold/10 text-hold border-hold/30 hover:bg-hold/20
+          `}
+          title={!loopRunning ? "Start the bot to request an analysis" : "Analyze now and email any BUY or SELL recommendation"}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-4-4" />
+          </svg>
+          {analysisLoading ? "Analyzing..." : "Analyze Now"}
+        </button>
+
         <button
           onClick={onGenerateReport}
           disabled={reportLoading}

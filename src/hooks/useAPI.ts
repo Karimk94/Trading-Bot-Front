@@ -56,6 +56,29 @@ export interface AIDecisionRecord {
   created_at: string;
 }
 
+export interface ForexCandidate {
+  symbol: string;
+  description: string;
+  price: number;
+  change_15m_pct: number;
+  change_1h_pct: number;
+  spread_pct: number;
+  rsi_14: number;
+  trend_strength: number;
+  trend: "BULLISH" | "BEARISH" | "MIXED";
+  signal: "BUY_SETUP" | "SELL_BIAS" | "WATCH";
+  reason: string;
+  delayed_by_minutes: number;
+}
+
+export interface ForexScan {
+  available: boolean;
+  message: string;
+  as_of: string;
+  candidates: ForexCandidate[];
+  top_pick: ForexCandidate | null;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...options,
@@ -115,6 +138,16 @@ export function useAPI() {
     }
   }, []);
 
+  const analyzeNow = useCallback(
+    () => apiFetch<{
+      decision: "BUY" | "SELL" | "HOLD";
+      confidence: number;
+      email_sent: boolean;
+      message: string;
+    }>("/api/loop/analyze", { method: "POST" }),
+    []
+  );
+
   const connectMT5 = useCallback(
     () => apiFetch<{ status: string }>("/api/mt5/connect", { method: "POST" }),
     []
@@ -133,6 +166,11 @@ export function useAPI() {
     []
   );
 
+  const getForexTrends = useCallback(
+    () => apiFetch<ForexScan>("/api/forex/trending"),
+    []
+  );
+
   return {
     loading,
     getStats,
@@ -141,8 +179,10 @@ export function useAPI() {
     getLoopStatus,
     startLoop,
     stopLoop,
+    analyzeNow,
     connectMT5,
     disconnectMT5,
     generateWeeklyReport,
+    getForexTrends,
   };
 }
