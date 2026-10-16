@@ -7,9 +7,11 @@ interface Props {
   loopRunning: boolean;
   onStart: () => void;
   onStop: () => void;
+  onClosePositions: () => void;
   onGenerateReport: () => void;
   onAnalyzeNow: () => void;
   loading: boolean;
+  closePositionsLoading: boolean;
   reportLoading: boolean;
   analysisLoading: boolean;
 }
@@ -41,9 +43,11 @@ export default function StatsBar({
   loopRunning,
   onStart,
   onStop,
+  onClosePositions,
   onGenerateReport,
   onAnalyzeNow,
   loading,
+  closePositionsLoading,
   reportLoading,
   analysisLoading,
 }: Props) {
@@ -85,6 +89,24 @@ export default function StatsBar({
       />
 
       <div className="ml-auto flex items-center gap-3">
+        {s.open_positions > 0 && (
+          <button
+            onClick={onClosePositions}
+            disabled={loading || closePositionsLoading || loopRunning}
+            className={`
+              px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300
+              flex items-center gap-2.5 border border-loss/30
+              ${loading || closePositionsLoading || loopRunning ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-loss/20"}
+              bg-loss/10 text-loss
+            `}
+            title={loopRunning ? "Stop the trading loop before closing positions" : "Submit market close orders for bot-tracked positions"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+            {closePositionsLoading ? "Submitting..." : "Close Positions"}
+          </button>
+        )}
         <button
           onClick={onAnalyzeNow}
           disabled={!loopRunning || analysisLoading}
@@ -138,7 +160,7 @@ export default function StatsBar({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="1" />
               </svg>
-              Stop Bot
+              Stop Entries
             </>
           ) : (
             <>

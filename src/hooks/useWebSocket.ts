@@ -10,6 +10,7 @@ export type WSEvent =
   | { event: "indicators"; data: IndicatorsData }
   | { event: "ai_decision"; data: AIDecisionData }
   | { event: "trade_executed"; data: TradeExecutedData }
+  | { event: "trade_closed"; data: TradeClosedData }
   | { event: "error"; data: ErrorData }
   | { event: "loop_started"; data: LoopLifecycleData }
   | { event: "loop_stopped"; data: LoopLifecycleData }
@@ -58,6 +59,16 @@ export interface TradeExecutedData {
   volume: number;
   confidence: number;
   summary: string;
+}
+
+export interface TradeClosedData {
+  trade_id: string;
+  ticket: number;
+  side: "BUY" | "SELL";
+  entry_price: number;
+  exit_price: number;
+  pnl: number;
+  closed_at: string;
 }
 
 export interface ErrorData {

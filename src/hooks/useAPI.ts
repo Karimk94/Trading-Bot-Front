@@ -130,13 +130,23 @@ export function useAPI() {
   const stopLoop = useCallback(async () => {
     setLoading(true);
     try {
-      return await apiFetch<{ status: string }>("/api/loop/stop", {
+      return await apiFetch<{ status: string; message: string }>("/api/loop/stop", {
         method: "POST",
       });
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const closeBotPositions = useCallback(
+    () => apiFetch<{
+      submitted_orders: number;
+      confirmed_closed: number;
+      pending_confirmation: number;
+      message: string;
+    }>("/api/loop/close-positions", { method: "POST" }),
+    []
+  );
 
   const analyzeNow = useCallback(
     () => apiFetch<{
@@ -179,6 +189,7 @@ export function useAPI() {
     getLoopStatus,
     startLoop,
     stopLoop,
+    closeBotPositions,
     analyzeNow,
     connectMT5,
     disconnectMT5,

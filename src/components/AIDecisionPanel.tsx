@@ -115,7 +115,8 @@ export default function AIDecisionPanel({ decision, sessionActive, loopRunning }
 
           <div className="flex flex-col gap-2 mt-1">
             <span className="text-xs text-muted uppercase tracking-widest">Chain of Thought</span>
-            {decision.chain_of_thought.map((step, idx) => (
+            <div className="flex flex-col gap-2 overflow-y-auto scrollbar-thin max-h-[320px] pr-1">
+              {decision.chain_of_thought.map((step, idx) => (
               <div
                 key={idx}
                 className="flex flex-col gap-1 p-3 rounded-lg bg-border/10 animate-slide-in-right"
@@ -132,6 +133,7 @@ export default function AIDecisionPanel({ decision, sessionActive, loopRunning }
                 </p>
               </div>
             ))}
+            </div>
           </div>
         </>
       )}

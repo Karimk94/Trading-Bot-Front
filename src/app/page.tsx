@@ -11,6 +11,7 @@ import AIDecisionPanel from "@/components/AIDecisionPanel";
 import TradeHistory from "@/components/TradeHistory";
 import ActivityFeed from "@/components/ActivityFeed";
 import ApprovalModal from "@/components/ApprovalModal";
+import AnalysisModal from "@/components/AnalysisModal";
 import ForexTrendsPanel from "@/components/ForexTrendsPanel";
 
 export default function Dashboard() {
@@ -22,6 +23,7 @@ export default function Dashboard() {
     getLoopStatus,
     startLoop,
     stopLoop,
+    closeBotPositions,
     analyzeNow,
     generateWeeklyReport,
     getForexTrends,
@@ -34,6 +36,13 @@ export default function Dashboard() {
   const [autoApproveUpdating, setAutoApproveUpdating] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [closePositionsLoading, setClosePositionsLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    decision: "BUY" | "SELL" | "HOLD";
+    confidence: number;
+    email_sent: boolean;
+    message: string;
+  } | null>(null);
   const [forexScan, setForexScan] = useState<ForexScan | null>(null);
   const [forexLoading, setForexLoading] = useState(true);
   const [forexError, setForexError] = useState<string | null>(null);
@@ -98,7 +107,11 @@ export default function Dashboard() {
   }, [refreshForex]);
 
   useEffect(() => {
-    if (ws.lastEvent?.event === "trade_executed" || ws.lastEvent?.event === "loop_stopped") {
+    if (
+      ws.lastEvent?.event === "trade_executed" ||
+      ws.lastEvent?.event === "trade_closed" ||
+      ws.lastEvent?.event === "loop_stopped"
+    ) {
       const refreshTimeout = window.setTimeout(refreshData, 0);
       return () => window.clearTimeout(refreshTimeout);
     }
@@ -117,11 +130,32 @@ export default function Dashboard() {
 
   const handleStop = async () => {
     try {
-      await stopLoop();
+      const result = await stopLoop();
       setLoopRunning(false);
-      refreshData();
+      await refreshData();
+      alert(result.message);
     } catch (e) {
       console.error("Failed to stop loop:", e);
+    }
+  };
+
+  const handleClosePositions = async () => {
+    if (loopRunning || closePositionsLoading) return;
+    const confirmed = window.confirm(
+      "Submit market close orders for all open XAU/USD positions tracked by this bot? Orders may fill at a different price. Positions stay marked open until Saxo confirms the closing fill."
+    );
+    if (!confirmed) return;
+
+    setClosePositionsLoading(true);
+    try {
+      const result = await closeBotPositions();
+      await refreshData();
+      alert(result.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      alert(`Could not close bot-tracked positions: ${message}`);
+    } finally {
+      setClosePositionsLoading(false);
     }
   };
 
@@ -182,7 +216,7 @@ export default function Dashboard() {
     setAnalysisLoading(true);
     try {
       const result = await analyzeNow();
-      alert(`${result.decision} · ${(result.confidence * 100).toFixed(0)}% confidence\n${result.message}`);
+      setAnalysisResult(result);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       alert(`Manual analysis failed: ${message}`);
@@ -197,6 +231,10 @@ export default function Dashboard() {
         signal={ws.pendingSignal}
         onApprove={handleApprove}
         onReject={handleReject}
+      />
+      <AnalysisModal
+        result={analysisResult}
+        onClose={() => setAnalysisResult(null)}
       />
 
       <div className="flex flex-col h-screen overflow-hidden">
@@ -218,9 +256,11 @@ export default function Dashboard() {
             loopRunning={loopRunning}
             onStart={handleStart}
             onStop={handleStop}
+            onClosePositions={handleClosePositions}
             onGenerateReport={handleGenerateReport}
             onAnalyzeNow={handleAnalyzeNow}
             loading={loading}
+            closePositionsLoading={closePositionsLoading}
             reportLoading={reportLoading}
             analysisLoading={analysisLoading}
           />

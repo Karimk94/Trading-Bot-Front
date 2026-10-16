@@ -16,14 +16,14 @@ export default function TradeHistory({ trades }: Props) {
         <span className="text-xs text-muted">{trades.length} trades</span>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-auto scrollbar-thin">
+      <div className="flex-1 flex flex-col overflow-auto scrollbar-thin max-h-[420px]">
         {trades.length === 0 ? (
           <div className="flex-1 flex items-center justify-center py-8 text-muted text-sm">
             No trades yet
           </div>
         ) : (
           <table className="w-full text-xs">
-            <thead>
+            <thead className="sticky top-0 bg-[#0e1320]/95 backdrop-blur-sm z-10">
               <tr className="text-muted uppercase tracking-wider border-b border-border">
                 <th className="text-left py-2 font-medium">Side</th>
                 <th className="text-right py-2 font-medium">Entry</th>
